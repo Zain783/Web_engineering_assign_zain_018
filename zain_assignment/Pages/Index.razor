@@ -1,15 +1,14 @@
 ﻿@page "/"
-@using System.Linq
-@using Microsoft.EntityFrameworkCore
-@inject DbContext DbContext
+@inject DataService DataService
 
 <h3>Data Display</h3>
 
+<!-- Display logic remains the same, using DataService for data retrieval -->
 <div>
     <h4>1. Retrieve Information from the Database</h4>
     <p>a. Names and Room Numbers for Classes with More than 100 Students:</p>
     <ul>
-        @foreach (var result in await GetClassesWithMoreThan100StudentsAsync())
+        @foreach (var result in DataService.GetClassesWithMoreThan100Students())
         {
             <li>@result.Name - Room: @result.RoomNumber</li>
         }
@@ -17,7 +16,7 @@
 
     <p>b. IDs and Majors of Students Who Take No Classes with Teachers in Department 22:</p>
     <ul>
-        @foreach (var result in await GetStudentsWithNoClassesInDepartment22Async())
+        @foreach (var result in DataService.GetStudentsWithNoClassesInDepartment22())
         {
             <li>ID: @result.Sid - Major: @result.Major</li>
         }
@@ -28,7 +27,7 @@
     <h4>2. Additional LINQ Challenges</h4>
     <p>a. Names of Students Enrolled in Classes and Have Not Yet Received Any Marks:</p>
     <ul>
-        @foreach (var result in await GetStudentsWithNoMarksAsync())
+        @foreach (var result in DataService.GetStudentsWithNoMarks())
         {
             <li>@result.Sname</li>
         }
@@ -36,57 +35,9 @@
 
     <p>b. Average Age of Students in Each Major:</p>
     <ul>
-        @foreach (var result in await GetAverageAgeByMajorAsync())
+        @foreach (var result in DataService.GetAverageAgeByMajor())
         {
             <li>Major: @result.Major - Average Age: @result.AverageAge</li>
         }
     </ul>
 </div>
-
-@code {
-    // LINQ Queries
-
-    private async Task<IQueryable<Class>> GetClassesWithMoreThan100StudentsAsync()
-    {
-        return await Task.FromResult(
-            DbContext.Classes
-                .Where(c => DbContext.Enrolled.Count(e => e.Class.Cid == c.Cid) > 100)
-        );
-    }
-
-    private async Task<IQueryable<Student>> GetStudentsWithNoClassesInDepartment22Async()
-    {
-        var studentsInDept22 = await DbContext.Faculties
-            .Where(f => f.Deptid == 22)
-            .SelectMany(f => f.Classes)
-            .SelectMany(c => c.Enrolled)
-            .Select(e => e.Sid)
-            .ToListAsync();
-
-        return await Task.FromResult(
-            DbContext.Students
-                .Where(s => !studentsInDept22.Contains(s.Sid))
-        );
-    }
-
-    private async Task<IQueryable<Student>> GetStudentsWithNoMarksAsync()
-    {
-        return await Task.FromResult(
-            DbContext.Students
-                .Where(s => s.Enrolled.Any(e => !e.Marks.Any()))
-        );
-    }
-
-    private async Task<IQueryable<object>> GetAverageAgeByMajorAsync()
-    {
-        return await Task.FromResult(
-            DbContext.Students
-                .GroupBy(s => s.Major)
-                .Select(g => new
-                {
-                    Major = g.Key,
-                    AverageAge = g.Average(s => s.Standing)
-                })
-        );
-    }
-}
